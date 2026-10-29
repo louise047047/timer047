@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>토끼 타이머</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome 아이콘 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Gaegu:wght@400;700&family=Jua&family=Nunito:wght@800;900&display=swap');
+        
+        body {
+            font-family: 'Jua', 'Gaegu', cursive, sans-serif;
+            background: linear-gradient(135deg, #fce7f3 0%, #fbcfe8 50%, #f3e8ff 100%);
+        }
+
+        .number-font {
+            font-family: 'Nunito', 'Jua', sans-serif;
+        }
+
+        /* 종료 시 파스텔 핑크/옐로우 배경 깜빡임 애니메이션 */
+        @keyframes flash-bg-cute {
+            0%, 100% { background-color: #fbcfe8; }
+            50% { background-color: #fef08a; }
+        }
+
+        .flash-animation {
+            animation: flash-bg-cute 0.5s infinite alternate;
+        }
+
+        /* 모달 팝업 바운스 애니메이션 */
+        @keyframes modal-pop {
+            0% { transform: scale(0.3) rotate(-10deg); opacity: 0; }
+            70% { transform: scale(1.1) rotate(3deg); }
+            100% { transform: scale(1) rotate(0deg); opacity: 1; }
+        }
+
+        .modal-enter {
+            animation: modal-pop 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        }
+
+        /* 토끼 통통 튀는 애니메이션 */
+        @keyframes rabbit-bounce {
+            0%, 100% { transform: translateY(0) scale(1); }
+            50% { transform: translateY(-12px) scale(1.05); }
+        }
+
+        .animate-rabbit {
+            animation: rabbit-bounce 1.2s infinite ease-in-out;
+        }
+
+        /* 귀여운 그림자 효과 */
+        .cute-shadow {
+            box-shadow: 0 10px 25px -5px rgba(244, 114, 182, 0.3), 0 8px 10px -6px rgba(244, 114, 182, 0.2);
+        }
+
+        /* 통통 튀는 버튼 클릭 효과 */
+        .cute-btn {
+            transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .cute-btn:active {
+            transform: scale(0.92);
+        }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-4 transition-colors duration-300" id="mainBody">
+
+    <!-- 메인 타이머 카드 -->
+    <div class="w-full max-w-md bg-white/90 backdrop-blur-md border-4 border-pink-200 rounded-[2.5rem] p-6 sm:p-8 cute-shadow flex flex-col items-center relative overflow-hidden">
+        
+        <!-- 타이틀 & 토끼 장식 -->
+        <div class="flex items-center gap-2 mb-4">
+            <span class="text-4xl animate-rabbit">🐰</span>
+            <h1 class="text-4xl font-extrabold text-pink-500 tracking-wide">
+                토끼의 당근 타이머
+            </h1>
+            <span class="text-4xl animate-rabbit" style="animation-delay: 0.3s;">🥕</span>
+        </div>
+
+        <!-- 원형 타이머 디스플레이 -->
+        <div class="relative w-64 h-64 sm:w-72 sm:h-72 flex items-center justify-center mb-6">
+            <!-- SVG 진행률 프로그레스 바 -->
+            <svg class="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
+                <!-- 배경 원 -->
+                <circle cx="50" cy="50" r="42" stroke="#fce7f3" stroke-width="8" fill="transparent" />
+                <!-- 진행 원 -->
+                <circle id="progressCircle" cx="50" cy="50" r="42" stroke="url(#cuteGradient)" stroke-width="8" fill="transparent"
+                    stroke-dasharray="263.89" stroke-dashoffset="0" stroke-linecap="round"
+                    class="transition-all duration-300 ease-linear" />
+                <!-- 그라데이션 정의 -->
+                <defs>
+                    <linearGradient id="cuteGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" stop-color="#f43f5e" />
+                        <stop offset="50%" stop-color="#fb7185" />
+                        <stop offset="100%" stop-color="#fb923c" />
+                    </linearGradient>
+                </defs>
+            </svg>
+
+            <!-- 중심 아기자기 카드 -->
+            <div class="absolute flex flex-col items-center justify-center bg-pink-50/80 rounded-full w-48 h-48 sm:w-52 sm:h-52 border-2 border-pink-200 shadow-inner">
+                <span id="timeDisplay" class="number-font text-6xl sm:text-7xl font-black text-pink-600 tracking-wider">
+                    00:00
+                </span>
+                <span id="statusLabel" class="text-lg font-bold text-pink-500 mt-1 bg-white px-4 py-1 rounded-full border border-pink-200 shadow-sm">
+                    대기 중 (최대 60분)
+                </span>
+            </div>
+        </div>
+
+        <!-- 1초 조절 (+ / -) 버튼 섹션 -->
+        <div class="flex items-center justify-center gap-3 w-full mb-4">
+            <button id="minus1sBtn" onclick="adjustTime(-1)" 
+                class="cute-btn flex-1 py-3 bg-rose-100 hover:bg-rose-200 text-rose-500 border-2 border-rose-300 rounded-2xl font-bold text-2xl flex items-center justify-center gap-1 shadow-sm">
+                <i class="fa-solid fa-minus text-base"></i> 1초
+            </button>
+            <button id="plus1sBtn" onclick="adjustTime(1)" 
+                class="cute-btn flex-1 py-3 bg-emerald-100 hover:bg-emerald-200 text-emerald-600 border-2 border-emerald-300 rounded-2xl font-bold text-2xl flex items-center justify-center gap-1 shadow-sm">
+                <i class="fa-solid fa-plus text-base"></i> 1초
+            </button>
+        </div>
+
+        <!-- 분 단위 추가 버튼 섹션 (+1분, +5분, +10분) -->
+        <div class="grid grid-cols-3 gap-2.5 w-full mb-5">
+            <button onclick="addMinutes(1)" 
+                class="cute-btn py-3 bg-sky-200 hover:bg-sky-300 text-sky-700 font-bold rounded-2xl border-2 border-sky-300 text-xl shadow-sm">
+                +1분 🥕
+            </button>
+            <button onclick="addMinutes(5)" 
+                class="cute-btn py-3 bg-purple-200 hover:bg-purple-300 text-purple-700 font-bold rounded-2xl border-2 border-purple-300 text-xl shadow-sm">
+                +5분 🥕
+            </button>
+            <button onclick="addMinutes(10)" 
+                class="cute-btn py-3 bg-amber-200 hover:bg-amber-300 text-amber-800 font-bold rounded-2xl border-2 border-amber-300 text-xl shadow-sm">
+                +10분 🥕
+            </button>
+        </div>
+
+        <!-- 주 제어 버튼 (시작/일시정지, Stop, Reset) -->
+        <div class="grid grid-cols-3 gap-3 w-full">
+            <button id="startBtn" onclick="toggleStartPause()" 
+                class="cute-btn py-3.5 bg-emerald-400 hover:bg-emerald-500 text-white font-black rounded-2xl border-b-4 border-emerald-600 shadow-md text-2xl flex items-center justify-center gap-1.5">
+                <i id="startIcon" class="fa-solid fa-play text-base"></i> <span id="startText">시작</span>
+            </button>
+            <button id="stopBtn" onclick="stopTimer()" 
+                class="cute-btn py-3.5 bg-amber-400 hover:bg-amber-500 text-white font-black rounded-2xl border-b-4 border-amber-600 shadow-md text-2xl flex items-center justify-center gap-1.5">
+                <i class="fa-solid fa-pause text-base"></i> 정지
+            </button>
+            <button id="resetBtn" onclick="resetTimer()" 
+                class="cute-btn py-3.5 bg-pink-300 hover:bg-pink-400 text-pink-800 font-black rounded-2xl border-b-4 border-pink-400 shadow-md text-2xl flex items-center justify-center gap-1.5">
+                <i class="fa-solid fa-rotate-right text-base"></i> 리셋
+            </button>
+        </div>
+    </div>
+
+    <!-- 토끼 등장 시간 종료 알림 모달 -->
+    <div id="alarmModal" class="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white border-4 border-pink-300 rounded-[2.5rem] p-8 max-w-xs sm:max-w-sm w-full text-center cute-shadow modal-enter flex flex-col items-center relative overflow-hidden">
+            
+            <!-- 귀여운 토끼 그래픽 (SVG) -->
+            <div class="w-32 h-32 mb-2 animate-rabbit relative flex items-center justify-center">
+                <svg viewBox="0 0 100 100" class="w-full h-full drop-shadow-md">
+                    <!-- 긴 토끼 귀 -->
+                    <ellipse cx="38" cy="22" rx="8" ry="20" fill="#fbcfe8" stroke="#f472b6" stroke-width="3" transform="rotate(-10 38 22)" />
+                    <ellipse cx="38" cy="22" rx="4" ry="12" fill="#f472b6" transform="rotate(-10 38 22)" />
+                    <ellipse cx="62" cy="22" rx="8" ry="20" fill="#fbcfe8" stroke="#f472b6" stroke-width="3" transform="rotate(10 62 22)" />
+                    <ellipse cx="62" cy="22" rx="4" ry="12" fill="#f472b6" transform="rotate(10 62 22)" />
+                    <!-- 얼굴 -->
+                    <circle cx="50" cy="55" r="28" fill="#ffffff" stroke="#f472b6" stroke-width="3" />
+                    <!-- 볼터치 -->
+                    <circle cx="34" cy="58" r="5" fill="#fca5a5" opacity="0.7" />
+                    <circle cx="66" cy="58" r="5" fill="#fca5a5" opacity="0.7" />
+                    <!-- 눈 -->
+                    <circle cx="40" cy="52" r="3" fill="#1e293b" />
+                    <circle cx="60" cy="52" r="3" fill="#1e293b" />
+                    <circle cx="41" cy="50" r="1" fill="#ffffff" />
+                    <circle cx="61" cy="50" r="1" fill="#ffffff" />
+                    <!-- 코 & 입 -->
+                    <polygon points="50,57 47,54 53,54" fill="#f472b6" />
+                    <path d="M 46 61 Q 50 64 50 60 Q 50 64 54 61" fill="none" stroke="#f472b6" stroke-width="2" stroke-linecap="round" />
+                    <!-- 손에 든 당근 -->
+                    <path d="M 68 62 L 82 72 Q 85 75 80 77 Q 75 80 72 73 Z" fill="#fb923c" stroke="#ea580c" stroke-width="1.5" />
+                    <path d="M 81 72 Q 86 68 88 72 Q 85 75 81 72 Z" fill="#4ade80" />
+                </svg>
+            </div>
+
+            <h2 class="text-4xl font-extrabold text-pink-600 mb-2">시간 종료! 🐰✨</h2>
+            <p class="text-pink-400 text-xl font-bold mb-6">"토끼가 찾아왔어요! 설정한 시간이 다 되었어요!"</p>
+            
+            <button onclick="closeAlarmModal()" 
+                class="cute-btn w-full py-4 bg-pink-500 hover:bg-pink-600 text-white font-extrabold text-2xl rounded-2xl border-b-4 border-pink-700 shadow-md">
+                고마워 토끼야! 💕
+            </button>
+        </div>
+    </div>
+
+    <!-- 자바스크립트 로직 -->
+    <script>
+        // 상수 및 상태 변수
+        const MAX_SECONDS = 3600; // 최대 60분 (3600초)
+        const CIRCLE_CIRCUMFERENCE = 263.89; // 원둘레 (2 * PI * r)
+
+        let totalSeconds = 0;       // 설정된 전체 시간 (초)
+        let remainingSeconds = 0;   // 남은 시간 (초)
+        let timerInterval = null;   // setInterval 참조
+        let isRunning = false;      // 타이머 동작 상태
+        let audioContext = null;    // 알람용 Web Audio API Context
+
+        // DOM 엘리먼트
+        const timeDisplay = document.getElementById('timeDisplay');
+        const statusLabel = document.getElementById('statusLabel');
+        const progressCircle = document.getElementById('progressCircle');
+        const mainBody = document.getElementById('mainBody');
+        const alarmModal = document.getElementById('alarmModal');
+        const startIcon = document.getElementById('startIcon');
+        const startText = document.getElementById('startText');
+
+        // 초 단위 디스플레이 업데이트 (MM:SS)
+        function updateDisplay() {
+            const mins = Math.floor(remainingSeconds / 60);
+            const secs = remainingSeconds % 60;
+            timeDisplay.textContent = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+
+            // 원형 진행 바 업데이트
+            if (totalSeconds > 0) {
+                const offset = CIRCLE_CIRCUMFERENCE - (remainingSeconds / totalSeconds) * CIRCLE_CIRCUMFERENCE;
+                progressCircle.style.strokeDashoffset = Math.max(0, offset);
+            } else {
+                progressCircle.style.strokeDashoffset = 0;
+            }
+        }
+
+        // 상태 라벨 업데이트
+        function updateStatus(text) {
+            statusLabel.textContent = text;
+        }
+
+        // 1초 단위 시간 조정 (+ / - 버튼)
+        function adjustTime(seconds) {
+            let newTime = remainingSeconds + seconds;
+
+            if (newTime < 0) newTime = 0;
+            if (newTime > MAX_SECONDS) newTime = MAX_SECONDS;
+
+            remainingSeconds = newTime;
+            totalSeconds = remainingSeconds; // 새로운 기준 시간 설정
+            updateDisplay();
+
+            if (remainingSeconds === MAX_SECONDS) {
+                updateStatus('최대 60분 도달!');
+            }
+        }
+
+        // 분 단위 시간 추가 (+1분, +5분, +10분)
+        function addMinutes(minutes) {
+            const addSecs = minutes * 60;
+            let newTime = remainingSeconds + addSecs;
+
+            if (newTime > MAX_SECONDS) {
+                newTime = MAX_SECONDS;
+            }
+
+            remainingSeconds = newTime;
+            totalSeconds = remainingSeconds; // 기준 시간 갱신
+            updateDisplay();
+
+            if (remainingSeconds === MAX_SECONDS) {
+                updateStatus('최대 60분 도달!');
+            }
+        }
+
+        // 시작/일시정지 토글
+        function toggleStartPause() {
+            if (remainingSeconds <= 0) return;
+
+            if (isRunning) {
+                // 일시 정지
+                clearInterval(timerInterval);
+                isRunning = false;
+                startIcon.className = 'fa-solid fa-play text-sm';
+                startText.textContent = '시작';
+                updateStatus('일시 정지됨 🐾');
+            } else {
+                // 시작
+                isRunning = true;
+                startIcon.className = 'fa-solid fa-pause text-sm';
+                startText.textContent = '일시정지';
+                updateStatus('타이머 작동 중... ⏱️');
+
+                timerInterval = setInterval(() => {
+                    if (remainingSeconds > 0) {
+                        remainingSeconds--;
+                        updateDisplay();
+                    } else {
+                        // 시간 종료 처리
+                        handleTimerEnd();
+                    }
+                }, 1000);
+            }
+        }
+
+        // Stop 버튼 (타이머 멈춤)
+        function stopTimer() {
+            if (isRunning) {
+                clearInterval(timerInterval);
+                isRunning = false;
+                startIcon.className = 'fa-solid fa-play text-sm';
+                startText.textContent = '시작';
+                updateStatus('멈춤 🛑');
+            }
+        }
+
+        // Reset 버튼 (타이머 초기화)
+        function resetTimer() {
+            clearInterval(timerInterval);
+            isRunning = false;
+            totalSeconds = 0;
+            remainingSeconds = 0;
+            startIcon.className = 'fa-solid fa-play text-sm';
+            startText.textContent = '시작';
+            updateDisplay();
+            updateStatus('대기 중 (최대 60분)');
+            stopAlarmSound();
+            mainBody.classList.remove('flash-animation');
+            alarmModal.classList.add('hidden');
+        }
+
+        // 타이머 종료 이벤트 처리
+        function handleTimerEnd() {
+            clearInterval(timerInterval);
+            isRunning = false;
+            startIcon.className = 'fa-solid fa-play text-sm';
+            startText.textContent = '시작';
+            updateStatus('시간 종료! 🐰');
+
+            // 1. 파스텔 깜빡임 애니메이션 추가
+            mainBody.classList.add('flash-animation');
+
+            // 2. 귀여운 토끼 팝업 창 띄우기
+            alarmModal.classList.remove('hidden');
+
+            // 3. 멜로디 스타일 알람음 재생
+            playAlarmSound();
+        }
+
+        // 알람 모달 닫기
+        function closeAlarmModal() {
+            alarmModal.classList.add('hidden');
+            mainBody.classList.remove('flash-animation');
+            stopAlarmSound();
+        }
+
+        // Web Audio API 귀여운 멜로디 알람 소리
+        function playAlarmSound() {
+            try {
+                if (!audioContext) {
+                    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                }
+
+                const notes = [523.25, 659.25, 783.99, 1046.50]; // C5, E5, G5, C6 귀여운 차임벨
+                let step = 0;
+
+                const playChime = () => {
+                    if (!mainBody.classList.contains('flash-animation')) return;
+
+                    const osc = audioContext.createOscillator();
+                    const gain = audioContext.createGain();
+
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(notes[step % notes.length], audioContext.currentTime);
+                    gain.gain.setValueAtTime(0.15, audioContext.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.3);
+
+                    osc.connect(gain);
+                    gain.connect(audioContext.destination);
+
+                    osc.start();
+                    osc.stop(audioContext.currentTime + 0.3);
+
+                    step++;
+                    if (step < 16) {
+                        setTimeout(playChime, 250);
+                    }
+                };
+
+                playChime();
+            } catch (e) {
+                console.log("오디오 재생 오류:", e);
+            }
+        }
+
+        function stopAlarmSound() {
+            if (audioContext && audioContext.state !== 'closed') {
+                audioContext.suspend();
+            }
+        }
+
+        // 초기 화면 설정
+        updateDisplay();
+    </script>
+</body>
+</html>
